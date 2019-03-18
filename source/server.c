@@ -79,7 +79,8 @@ int main(int argc, char** argv)
         // accept 从已完成连接队列的头部返回下一个已完成的连接，若此队列为空，进程被投入睡眠(进入阻塞)
         // listenfd 上述创建的监听套接字
         // connectfd 已连接的套接字
-        //  accept 函数会产生一个新的 socket 用于与客户进行通信，这个新套接字的端口是如何给定的？
+        //  accept 函数会产生一个新的 socket 用于与客户进行通信，这个新套接字是怎么样的？
+        //  -- 源端口为当前绑定的端口，目的端口号为客户端的端口号
         // fork 之后，服务器继续调用此函数
         connectfd = accept(listenfd, (struct sockaddr*)&client_addr, &client_len);
 

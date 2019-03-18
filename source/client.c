@@ -48,8 +48,8 @@ int main(int argc , char** argv)
 
     // connect 之前没有 bind，不需要与指定的port绑定
     // 引发 TCP 的三次握手协议
-    // 客户端端口号分配规则是什么？
-    // 服务器在什么状态下会请求失败？
+    //  客户端端口号分配规则是什么？-- 随机分配
+    //  服务器在什么状态下会请求失败？
     if(connect(sockfd, (struct sockaddr*)&seraddr, sizeof(seraddr)) < 0)
     {
         printf("connect error\r\n");
