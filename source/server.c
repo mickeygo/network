@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <arpa/inet.h>
 #include <stdlib.h>
+#include <errno.h> 
 
 // 从客户读取数据，并把这些数据 echo 给客户
 // `sockfd` socket 描述符
@@ -24,6 +25,21 @@ void str_echo(int sockfd)
     {
         printf("read error\r\n");
     }
+}
+
+// 
+void sig_chld(int signo)
+{
+    pid_t pid;
+    int stat;
+
+    // 使用 waitpid 而不是 wait 函数来处理 SIGCHLD 信号; 使用 while 循环，以获取所有已终止子进程的状态。
+    // -1 监听范围扩大到任意子进程
+    // WNOHANG: 告知waitpid在有尚未终止的子进程在运行时不要阻塞
+    while((pid = waitpid(-1, &stat, WNOHANG)) > 0)
+        printf("child %d terminated\n", pid);
+
+    return;
 }
 
 int main(int argc, char** argv)
@@ -72,6 +88,10 @@ int main(int argc, char** argv)
         return 0;
     }
 
+    // 处理僵死子线程
+    // SIGCHLD: 当子进程状态变更了时(停止或退出)，会发送这个信号通知父进程。父进程可通过 wait/waitpid 来获悉这些状态。
+    signal(SIGCHLD, sig_chld);
+
     for( ; ; )
     {
         client_len = sizeof(client_addr);
@@ -82,12 +102,31 @@ int main(int argc, char** argv)
         //  accept 函数会产生一个新的 socket 用于与客户进行通信，这个新套接字是怎么样的？
         //  -- 源端口为当前绑定的端口，目的端口号为客户端的端口号
         // fork 之后，服务器继续调用此函数
-        connectfd = accept(listenfd, (struct sockaddr*)&client_addr, &client_len);
+        // improved, 处理被中断的系统调用
+        // note: 慢系统调用(slow system call)
+        if ((connectfd = accept(listenfd, (struct sockaddr*)&client_addr, &client_len)) < 0) {
+            // errno为EINTR表征的意义:
+            //  由于信号中断，没写成功任何数据。  
+            //  由于信号中断，没读到任何数据。  
+            //  由于信号中断返回，没有任何数据可用。  
+            //  函数调用被信号处理函数中断。  
+            if (errno == EINTR) {
+                continue;
+            } else {
+                // err_sys("accept error"); // throw error and exit
+                exit(1);
+            }
+        }
 
         // fork 函数
         // 为 0 表示为当前进程为子进程
         // 父进程与子进程引用同一个 socket，此套接字引用描述符为 2，close() 函数表示将套接字引用减 1（注：并不是关闭 socket，其关闭由内核决定）
-        if((childpid = fork())== 0)
+        // note: fork之后，操作系统会复制一个与父进程完全相同的子进程，虽说是父子关系，但是在操作系统看来，他们更像兄弟关系，这2个进程共享代码空间，
+        //  但是数据空间是互相独立的，子进程数据空间中的内容是父进程的完整拷贝，指令指针也完全相同，
+        //  子进程拥有父进程当前运行到的位置（两进程的程序计数器pc值相同，也就是说，子进程是从fork返回处开始执行的），
+        //  至于那一个最先运行，可能与操作系统（调度算法）有关。
+        // 关于父进程与子进程关系，可参考文章 http://www.cnblogs.com/wuguiyunwei/p/7058056.html
+        if((childpid = fork()) == 0)
         {
             // 在 fork 的同时，子线程也复制了引用监听的套接字引用对象，需要关闭
             close(listenfd);
