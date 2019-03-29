@@ -16,13 +16,12 @@ void str_echo(int sockfd)
     ssize_t n;
     char buf[1024];
 
-    while((n = read(sockfd, buf, 1024)) > 0)  // 从 socket 中读取数据
+    while ((n = read(sockfd, buf, 1024)) > 0)  // 从 socket 中读取数据
     {
         write(sockfd, buf, n);  // 将数据写入 socket
     }
 
-    if(n < 0)
-    {
+    if (n < 0) {
         printf("read error\r\n");
     }
 }
@@ -53,8 +52,7 @@ int main(int argc, char** argv)
     // AF_INET -- IPv4; 
     // SOCK_STREAM -- 字节流套接字
     // protocol: 套接字所用的协议， 0 表示缺省值
-    if((listenfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
-    {
+    if ((listenfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         printf("sock error\r\n");
         return 0;
     }
@@ -68,8 +66,7 @@ int main(int argc, char** argv)
 
     // 将一个本地协议地址（IPv4/IPv6 + TCP/UDP端口号）赋予此 socket
     // bind 第三个参数是该地址结构(第二个参数)的长度
-    if(bind(listenfd, (struct sockaddr*)&servaddr, sizeof(servaddr)) < 0)
-    {
+    if (bind(listenfd, (struct sockaddr*)&servaddr, sizeof(servaddr)) < 0) {
         printf("bind error\r\n");
         return 0;
     }
@@ -82,8 +79,7 @@ int main(int argc, char** argv)
     //      参考网址：https://stackoverflow.com/questions/34073871/socket-programming-whats-the-difference-between-listen-and-accept
     //  listen 表示愿意接收即将到来的连接，并为要进入的连接指定一个队列的大小（此时还未开始进行监听）
     //  accept 启动监听，并堵塞进程，直到已完成连接的队列中有数据；同时也会创建一个新的 socket
-    if(listen(listenfd, 0) < 0)
-    {
+    if (listen(listenfd, 0) < 0) {
         printf("listen error\r\n");
         return 0;
     }
@@ -92,8 +88,7 @@ int main(int argc, char** argv)
     // SIGCHLD: 当子进程状态变更了时(停止或退出)，会发送这个信号通知父进程。父进程可通过 wait/waitpid 来获悉这些状态。
     signal(SIGCHLD, sig_chld);
 
-    for( ; ; )
-    {
+    for ( ; ; ) {
         client_len = sizeof(client_addr);
 
         // accept 从已完成连接队列的头部返回下一个已完成的连接，若此队列为空，进程被投入睡眠(进入阻塞)
@@ -126,8 +121,7 @@ int main(int argc, char** argv)
         //  子进程拥有父进程当前运行到的位置（两进程的程序计数器pc值相同，也就是说，子进程是从fork返回处开始执行的），
         //  至于那一个最先运行，可能与操作系统（调度算法）有关。
         // 关于父进程与子进程关系，可参考文章 http://www.cnblogs.com/wuguiyunwei/p/7058056.html
-        if((childpid = fork()) == 0)
-        {
+        if ((childpid = fork()) == 0) {
             // 在 fork 的同时，子线程也复制了引用监听的套接字引用对象，需要关闭
             close(listenfd);
             str_echo(connectfd);
